@@ -2,79 +2,59 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>إدارة الحضور - المدرسة الثالثة</title>
+    <title>إدارة حضور المدرسة الثالثة</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #f4f7f6; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
         .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .nav-bar { display: flex; gap: 10px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .nav-bar { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
         .nav-btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; background: #007bff; color: white; font-weight: bold; }
-        .nav-btn:hover { background: #0056b3; }
-        input, select, button { padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        .hidden { display: none; }
+        input, select, button { padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #eee; padding: 10px; text-align: center; }
-        th { background-color: #007bff; color: white; }
-        .hidden { display: none; }
+        th { background-color: #333; color: white; }
     </style>
 </head>
 <body>
 
 <div class="container" style="text-align:center;">
-    <h2 style="color:#007bff;">نظام إدارة الحضور المطور</h2>
-    <h3>المدرسة الثالثة</h3>
+    <h2>لوحة تحكم المدير - المدرسة الثالثة</h2>
     <div class="nav-bar">
         <button class="nav-btn" onclick="showSection('quick')">التسجيل السريع</button>
         <button class="nav-btn" onclick="showSection('manual')">تسجيل يدوي</button>
-        <button class="nav-btn" onclick="showSection('reports')">التقارير</button>
-        <button class="nav-btn" onclick="showSection('employees')">الموظفين</button>
+        <button class="nav-btn" onclick="showSection('reports')">التقارير والمتغيبون</button>
+        <button class="nav-btn" onclick="showSection('employees')">إدارة الموظفين</button>
     </div>
 </div>
 
-<div id="quick" class="container">
-    <h3>لوحة التسجيل السريع</h3>
-    <table id="quickTable">
-        <thead><tr><th>الاسم</th><th>النوع</th><th>إجراءات</th></tr></thead>
-        <tbody id="quickAttendanceTable"></tbody>
-    </table>
-</div>
+<div id="quick" class="container"><h3>التسجيل السريع (للموظفين)</h3><table id="quickTable"><thead><tr><th>الاسم</th><th>إجراء</th></tr></thead><tbody id="quickList"></tbody></table></div>
 
 <div id="manual" class="container hidden">
-    <h3>تسجيل الحضور اليدوي</h3>
-    <div class="input-group">
-        <input type="text" id="empCode" placeholder="كود الموظف">
-        <select id="status"><option>حاضر</option><option>متأخر</option><option>مجاز</option><option>غائب</option></select>
-        <input type="text" id="reason" placeholder="الملاحظة">
-        <input type="time" id="customTime">
-        <button onclick="registerAttendance()" style="background:#28a745; color:white;">تسجيل</button>
-    </div>
-    <table id="mainTable">
-        <thead><tr><th>الاسم</th><th>التاريخ</th><th>الحالة</th><th>إجراء</th></tr></thead>
-        <tbody id="attendanceTable"></tbody>
-    </table>
+    <h3>تسجيل يدوي</h3>
+    <input type="text" id="mCode" placeholder="كود الموظف">
+    <select id="mStatus"><option>حاضر</option><option>متأخر</option></select>
+    <button onclick="addManual()">تسجيل حضور</button>
 </div>
 
 <div id="reports" class="container hidden">
     <h3>التقارير وكشف المتغيبين</h3>
-    <input type="date" id="dateSelector" onchange="renderTable()">
-    <button onclick="checkAttendanceStatus()" style="background:#dc3545; color:white;">كشف المتغيبين</button>
-    <div id="missingReport" class="hidden" style="border:1px solid red; padding:10px; margin-top:10px;">
-        <ul id="missingList" style="color:red;"></ul>
-    </div>
+    <input type="date" id="repDate">
+    <button onclick="generateReport()">عرض التقرير</button>
+    <button onclick="showMissing()" style="background:#dc3545; color:white;">عرض المتغيبين</button>
+    <div id="reportArea"></div>
 </div>
 
 <div id="employees" class="container hidden">
-    <h3>إدارة الموظفين</h3>
-    <div class="input-group">
-        <input type="text" id="newEmpCode" placeholder="الكود">
-        <input type="text" id="newEmpName" placeholder="الاسم">
-        <select id="newEmpType"><option>مدرس</option><option>موظف</option></select>
-        <button onclick="addEmployee()" style="background:#6c757d; color:white;">إضافة</button>
-    </div>
-    <table id="employeesTable"></table>
+    <h3>إضافة موظف جديد</h3>
+    <input type="text" id="eCode" placeholder="الكود">
+    <input type="text" id="eName" placeholder="الاسم">
+    <button onclick="addEmp()">حفظ الموظف</button>
+    <table id="empTable"><thead><tr><th>الكود</th><th>الاسم</th></tr></thead><tbody id="empList"></tbody></table>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, setDoc, deleteDoc, query, where, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const db = getFirestore(initializeApp({
         apiKey: "AIzaSyA_7S6EL-PCRt_ZznsnNtfV089NLc8yRV0",
@@ -84,17 +64,46 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    // دالة التنقل بين الأقسام
+    // التنقل بين الأقسام
     window.showSection = (id) => {
-        document.querySelectorAll('.container').forEach(div => {
-            if(div.id !== 'quick' && div.id !== 'manual' && div.id !== 'reports' && div.id !== 'employees') return;
-            div.classList.add('hidden');
-        });
+        ['quick', 'manual', 'reports', 'employees'].forEach(s => document.getElementById(s).classList.add('hidden'));
         document.getElementById(id).classList.remove('hidden');
     };
 
-    // (بقية الدوال البرمجية المعتادة لعمليات Firebase توضع هنا بنفس الطريقة السابقة...)
-    // لقد قمت بتبسيط الهيكل ليعمل معك بسلاسة
+    // إضافة موظف
+    window.addEmp = async () => {
+        const code = document.getElementById('eCode').value;
+        const name = document.getElementById('eName').value;
+        await setDoc(doc(db, "employees", code), { name });
+        alert("تم إضافة الموظف!");
+    };
+
+    // تسجيل يدوي
+    window.addManual = async () => {
+        const code = document.getElementById('mCode').value;
+        await addDoc(collection(db, "attendance"), { empCode: code, status: document.getElementById('mStatus').value, date: new Date().toISOString().split('T')[0] });
+        alert("تم التسجيل!");
+    };
+
+    // كشف المتغيبين (منطق بسيط للمقارنة)
+    window.showMissing = async () => {
+        const date = new Date().toISOString().split('T')[0];
+        const allEmps = await getDocs(collection(db, "employees"));
+        const atts = await getDocs(query(collection(db, "attendance"), where("date", "==", date)));
+        const attCodes = atts.docs.map(d => d.data().empCode);
+        let list = "<ul>";
+        allEmps.forEach(e => {
+            if(!attCodes.includes(e.id)) list += `<li>${e.data().name}</li>`;
+        });
+        document.getElementById('reportArea').innerHTML = "<h3>المتغيبون اليوم:</h3>" + list + "</ul>";
+    };
+
+    // تحميل الموظفين تلقائياً
+    onSnapshot(collection(db, "employees"), (snap) => {
+        const tbody = document.getElementById('empList');
+        tbody.innerHTML = "";
+        snap.forEach(d => tbody.innerHTML += `<tr><td>${d.id}</td><td>${d.data().name}</td></tr>`);
+    });
 </script>
 </body>
 </html>
