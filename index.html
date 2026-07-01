@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <title>إدارة الحضور - المدرسة الثالثة</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
     <style>
         body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
         .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
@@ -38,6 +40,7 @@
     <h3>التحكم في التاريخ والتقارير</h3>
     <input type="date" id="dateSelector" onchange="renderTable()">
     <button onclick="exportExcel()" style="background:green; color:white;">تصدير Excel</button>
+    <button onclick="exportPDF()" style="background:#dc3545; color:white;">تصدير PDF</button>
     <button onclick="backupData()" style="background:#6c757d; color:white;">نسخة احتياطية (JSON)</button>
     <button onclick="document.getElementById('importFile').click()" style="background:#ff9800; color:white;">استيراد (JSON)</button>
     <button onclick="checkAttendanceStatus()" style="background:#dc3545; color:white;">كشف المتغيبين</button>
@@ -109,7 +112,15 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    // دالة تحديد حد الوقت بناءً على النوع واليوم (5=جمعة، 6=سبت)
+    // دالة تصدير PDF
+    window.exportPDF = () => {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text("تقرير الحضور اليومي: " + document.getElementById('dateSelector').value, 105, 10, { align: "center" });
+        doc.autoTable({ html: '#mainTable', startY: 20 });
+        doc.save('تقرير_' + document.getElementById('dateSelector').value + '.pdf');
+    };
+
     const getLimit = (type, dayIndex) => {
         if (type === "حارس") return (dayIndex === 5 || dayIndex === 6) ? "07:05" : "17:05";
         if (type === "موظف") return "07:10";
@@ -157,7 +168,6 @@
 
     window.updateExitTime = async (id, time) => { await setDoc(doc(db, 'attendance', id), { exitTime: time }, { merge: true }); };
     
-    // ضبط التاريخ والوقت الافتراضي بالإنجليزية
     document.getElementById('dateSelector').valueAsDate = new Date();
     document.getElementById('customTime').value = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false});
 
@@ -192,7 +202,7 @@
         const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
         if (!(await getDocs(q)).empty) { alert("الموظف مسجل بالفعل!"); return; }
 
-        await addDoc(collection(db, "attendance"), { empCode: code, name: empData.name, status, time: (status === "غائب" || status === "مجاز") ? "-" : timeInput, exitTime: "", date, day: new Date(date).toLocaleDateString('ar-EG', {weekday: 'long'}), reason: reason });
+        await addDoc(collection(db, "attendance"), { empCode: code, name: empSnap.data().name, status, time: (status === "غائب" || status === "مجاز") ? "-" : timeInput, exitTime: "", date, day: new Date(date).toLocaleDateString('ar-EG', {weekday: 'long'}), reason: reason });
         alert("تم التسجيل كـ: " + status);
     };
 
