@@ -13,7 +13,7 @@
 </head>
 <body>
 <div class="container">
-    <h2>تسجيل الحضور اليومي النجدين</h2>
+    <h2>تسجيل الحضور اليومي اعدادية النجدين</h2>
     <div id="statusMsg">جاري التحقق من موقعك...</div>
     <div id="regArea" style="display:none;">
         <input type="text" id="empCode" placeholder="أدخل كود الموظف">
@@ -46,7 +46,7 @@
         const a = Math.sin(dLat/2)**2 + Math.cos(SCHOOL_LAT*Math.PI/180) * Math.cos(pos.coords.latitude*Math.PI/180) * Math.sin(dLon/2)**2;
         const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-        if (dist <= 300) {
+        if (dist <= 10000) {
             isLocationVerified = true;
             document.getElementById('statusMsg').innerText = "أهلاً بك، يمكنك تسجيل الحضور الآن.";
             document.getElementById('statusMsg').style.color = "green";
