@@ -23,7 +23,7 @@
 
 <div class="container" style="text-align:center;">
     <h2 style="color:#007bff;">نظام إدارة الحضور</h2>
-    <h3>اعدادية النجدين للبنين</h3>
+    <h3>المدرسة الثالثة</h3>
 </div>
 
 <div class="container">
@@ -109,7 +109,6 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    // دالة تحديد حد الوقت بناءً على النوع واليوم (5=جمعة، 6=سبت)
     const getLimit = (type, dayIndex) => {
         if (type === "حارس") return (dayIndex === 5 || dayIndex === 6) ? "07:05" : "17:05";
         if (type === "موظف") return "07:10";
@@ -157,7 +156,6 @@
 
     window.updateExitTime = async (id, time) => { await setDoc(doc(db, 'attendance', id), { exitTime: time }, { merge: true }); };
     
-    // ضبط التاريخ والوقت الافتراضي بالإنجليزية
     document.getElementById('dateSelector').valueAsDate = new Date();
     document.getElementById('customTime').value = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false});
 
@@ -258,13 +256,26 @@
         };
         reader.readAsText(file);
     };
-    window.exportExcel = () => {
-        let content = `<h1>تقرير الحضور: ${document.getElementById('dateSelector').value}</h1>` + document.getElementById('mainTable').outerHTML;
+    
+    // الدالة المحدثة: تسحب البيانات من المصدر مباشرة لتضمن ظهور وقت الانصراف
+    window.exportExcel = async () => {
+        const date = document.getElementById('dateSelector').value;
+        const q = query(collection(db, "attendance"), where("date", "==", date));
+        const snap = await getDocs(q);
+        
+        let content = `<table><thead><tr><th>الاسم</th><th>اليوم</th><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th><th>السبب</th></tr></thead><tbody>`;
+        snap.forEach(d => {
+            let data = d.data();
+            content += `<tr><td>${data.name}</td><td>${data.day}</td><td>${data.date}</td><td>${data.time}</td><td>${data.exitTime || ''}</td><td>${data.status}</td><td>${data.reason || ''}</td></tr>`;
+        });
+        content += `</tbody></table>`;
+        
         let a = document.createElement('a');
         a.href = 'data:application/vnd.ms-excel,' + encodeURIComponent(content);
-        a.download = 'تقرير_' + document.getElementById('dateSelector').value + '.xls';
+        a.download = 'تقرير_' + date + '.xls';
         a.click();
     };
+
     window.backupData = async () => {
         const snap = await getDocs(collection(db, "attendance"));
         let data = []; snap.forEach(d => data.push(d.data()));
