@@ -2,55 +2,56 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>النظام الإداري المتكامل - المدرسة الثالثة</title>
+    <title>إدارة حضور المدرسة الثالثة</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; background: #eef2f3; }
-        .container { max-width: 950px; margin: auto; background: white; padding: 20px; border-radius: 10px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .stats-bar { display: flex; gap: 10px; margin-bottom: 20px; }
-        .stat-card { flex: 1; padding: 15px; text-align: center; color: white; border-radius: 8px; font-weight: bold; }
-        input, select, button { padding: 10px; border: 1px solid #ccc; border-radius: 5px; cursor: pointer; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .nav-bar { display: flex; gap: 10px; margin-bottom: 20px; justify-content: center; }
+        .nav-btn { padding: 10px 20px; cursor: pointer; border: none; background: #007bff; color: white; border-radius: 5px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
-        th { background-color: #007bff; color: white; }
+        th { background-color: #333; color: white; }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container" style="text-align:center;">
-    <h2 style="color:#007bff;">نظام إدارة الحضور والتقارير</h2>
-</div>
-
-<div class="container">
-    <div class="stats-bar">
-        <div class="stat-card" style="background:#007bff">حاضر: <span id="s_حاضر">0</span></div>
-        <div class="stat-card" style="background:#ffc107">متأخر: <span id="s_متأخر">0</span></div>
-        <div class="stat-card" style="background:#28a745">مجاز: <span id="s_مجاز">0</span></div>
-        <div class="stat-card" style="background:#dc3545">غائب: <span id="s_غائب">0</span></div>
+    <h2>لوحة تحكم المدير - المدرسة الثالثة</h2>
+    <div class="nav-bar">
+        <button class="nav-btn" onclick="show('quick')">التسجيل السريع</button>
+        <button class="nav-btn" onclick="show('manual')">التسجيل اليدوي</button>
+        <button class="nav-btn" onclick="show('reports')">التقارير</button>
+        <button class="nav-btn" onclick="show('emps')">إدارة الموظفين</button>
     </div>
-    <input type="date" id="dateSelector" onchange="renderTable()">
-    <button onclick="exportExcel()">تصدير Excel</button>
-    <button onclick="backupData()">نسخة احتياطية (JSON)</button>
 </div>
 
-<div class="container">
-    <h3>تسجيل يدوي (مع الوقت والحالة)</h3>
+<div id="quick" class="container">
+    <h3>التسجيل السريع</h3>
+    <table><thead><tr><th>الاسم</th><th>إجراء</th></tr></thead><tbody id="quickList"></tbody></table>
+</div>
+
+<div id="manual" class="container hidden">
+    <h3>التسجيل اليدوي</h3>
     <input type="text" id="mCode" placeholder="كود الموظف">
     <select id="mStatus"><option>حاضر</option><option>متأخر</option><option>مجاز</option><option>غائب</option></select>
     <input type="time" id="mTime">
-    <input type="text" id="mReason" placeholder="السبب/الملاحظات">
-    <button onclick="registerManual()" style="background:#007bff; color:white;">تسجيل</button>
+    <button onclick="saveManual()">حفظ</button>
 </div>
 
-<div class="container">
-    <table id="mainTable">
-        <thead><tr><th>الاسم</th><th>التاريخ</th><th>الوقت</th><th>الحالة</th><th>السبب</th><th>إجراء</th></tr></thead>
-        <tbody id="attendanceTable"></tbody>
-    </table>
+<div id="reports" class="container hidden">
+    <h3>التقارير</h3>
+    <div id="reportArea"></div>
+</div>
+
+<div id="emps" class="container hidden">
+    <h3>قائمة الموظفين</h3>
+    <table><thead><tr><th>الكود</th><th>الاسم</th></tr></thead><tbody id="empList"></tbody></table>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, onSnapshot, query, where, getDocs, doc, deleteDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, onSnapshot, addDoc } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const db = getFirestore(initializeApp({
         apiKey: "AIzaSyA_7S6EL-PCRt_ZznsnNtfV089NLc8yRV0",
@@ -60,55 +61,21 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    window.registerManual = async () => {
-        const code = document.getElementById('mCode').value;
-        const status = document.getElementById('mStatus').value;
-        const time = document.getElementById('mTime').value;
-        const reason = document.getElementById('mReason').value;
-        const date = document.getElementById('dateSelector').value || new Date().toISOString().split('T')[0];
-
-        const empSnap = await getDocs(query(collection(db, "employees"), where("code", "==", code))); // افتراض أنك تستخدم هذا الهيكل
-        const name = empSnap.empty ? "غير معروف" : empSnap.docs[0].data().name;
-
-        await addDoc(collection(db, "attendance"), { empCode: code, name, status, time, reason, date });
-        alert("تم التسجيل!");
+    window.show = (id) => {
+        ['quick', 'manual', 'reports', 'emps'].forEach(s => document.getElementById(s).classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
     };
 
-    window.renderTable = () => {
-        const date = document.getElementById('dateSelector').value || new Date().toISOString().split('T')[0];
-        onSnapshot(query(collection(db, "attendance"), where("date", "==", date)), snap => {
-            let rows = "", stats = {حاضر:0, متأخر:0, مجاز:0, غائب:0};
-            snap.forEach(d => {
-                let data = d.data();
-                if(stats.hasOwnProperty(data.status)) stats[data.status]++;
-                rows += `<tr><td>${data.name}</td><td>${data.date}</td><td>${data.time}</td><td>${data.status}</td><td>${data.reason||''}</td><td><button onclick="deleteRow('${d.id}')">حذف</button></td></tr>`;
-            });
-            document.getElementById('attendanceTable').innerHTML = rows;
-            for(let k in stats) document.getElementById('s_'+k).innerText = stats[k];
+    // جلب البيانات وإعادة بناء الجداول
+    onSnapshot(collection(db, "employees"), (snap) => {
+        const quick = document.getElementById('quickList');
+        const emp = document.getElementById('empList');
+        quick.innerHTML = ""; emp.innerHTML = "";
+        snap.forEach(d => {
+            quick.innerHTML += `<tr><td>${d.data().name}</td><td><button>حضور</button></td></tr>`;
+            emp.innerHTML += `<tr><td>${d.id}</td><td>${d.data().name}</td></tr>`;
         });
-    };
-
-    window.deleteRow = (id) => deleteDoc(doc(db, 'attendance', id));
-    
-    window.exportExcel = () => {
-        let content = "<table>" + document.getElementById('mainTable').innerHTML + "</table>";
-        let a = document.createElement('a');
-        a.href = 'data:application/vnd.ms-excel,' + encodeURIComponent(content);
-        a.download = 'تقرير_الحضور.xls';
-        a.click();
-    };
-
-    window.backupData = async () => {
-        const snap = await getDocs(collection(db, "attendance"));
-        let data = []; snap.forEach(d => data.push(d.data()));
-        const a = document.createElement('a');
-        a.href = 'data:application/json,' + encodeURIComponent(JSON.stringify(data));
-        a.download = "backup.json";
-        a.click();
-    };
-
-    document.getElementById('dateSelector').valueAsDate = new Date();
-    renderTable();
+    });
 </script>
 </body>
 </html>
