@@ -13,10 +13,10 @@
 </head>
 <body>
 <div class="container">
-    <h2>تسجيل الحضور اليومي</h2>
+    <h2>تسجيل الحضور اليومي النجدين</h2>
     <div id="statusMsg">جاري التحقق من موقعك...</div>
     <div id="regArea" style="display:none;">
-        <input type="text" id="empCode" placeholder="أدخل كود الموظف الخاص بك">
+        <input type="text" id="empCode" placeholder="أدخل كود الموظف">
         <button class="btn-reg" style="background:#28a745;" onclick="registerAttendance('attendance')">تسجيل الحضور</button>
         <button class="btn-reg" style="background:#6f42c1;" onclick="registerAttendance('exit')">تسجيل الانصراف</button>
     </div>
@@ -34,7 +34,9 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    // التحقق من الموقع (نطاق 300 متر)
+    let isLocationVerified = false;
+
+    // التحقق من الموقع بدقة عالية
     navigator.geolocation.getCurrentPosition(pos => {
         const SCHOOL_LAT = 31.730757;
         const SCHOOL_LON = 44.988952;
@@ -45,6 +47,7 @@
         const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
         if (dist <= 300) {
+            isLocationVerified = true;
             document.getElementById('statusMsg').innerText = "أهلاً بك، يمكنك تسجيل الحضور الآن.";
             document.getElementById('statusMsg').style.color = "green";
             document.getElementById('regArea').style.display = "block";
@@ -52,9 +55,14 @@
             document.getElementById('statusMsg').innerText = "عذراً، أنت خارج النطاق المسموح به (300 متر).";
             document.getElementById('statusMsg').style.color = "red";
         }
-    }, () => alert("يرجى السماح بالوصول للموقع لتتمكن من تسجيل الحضور."));
+    }, () => alert("يرجى السماح بالوصول للموقع لتتمكن من التسجيل."), { enableHighAccuracy: true });
 
     window.registerAttendance = async (action) => {
+        if (!isLocationVerified) {
+            alert("لا يمكن التسجيل! الموقع غير مؤكد أو أنت خارج النطاق.");
+            return;
+        }
+
         const code = document.getElementById('empCode').value;
         if(!code) return alert("يرجى إدخال الكود!");
 
@@ -63,7 +71,7 @@
 
         const date = new Date().toISOString().split('T')[0];
         const dayName = new Date().toLocaleDateString('ar-EG', {weekday: 'long'});
-        const now = new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'});
+        const now = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false});
 
         const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
         const snap = await getDocs(q);
