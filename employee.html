@@ -44,12 +44,12 @@
         const a = Math.sin(dLat/2)**2 + Math.cos(SCHOOL_LAT*Math.PI/180) * Math.cos(pos.coords.latitude*Math.PI/180) * Math.sin(dLon/2)**2;
         const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-        if (dist <= 300) {
+        if (dist <= 10000) {
             document.getElementById('statusMsg').innerText = "أهلاً بك، يمكنك تسجيل الحضور الآن.";
             document.getElementById('statusMsg').style.color = "green";
             document.getElementById('regArea').style.display = "block";
         } else {
-            document.getElementById('statusMsg').innerText = "عذراً، أنت خارج النطاق المسموح به (100000 متر).";
+            document.getElementById('statusMsg').innerText = "عذراً، أنت خارج النطاق المسموح به (10000 متر).";
         }
     }, () => alert("يرجى السماح بالوصول للموقع لتتمكن من تسجيل الحضور."));
 
