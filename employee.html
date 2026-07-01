@@ -2,28 +2,59 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>تسجيل الحضور - الموظفين</title>
+    <title>إدارة حضور المدرسة الثالثة</title>
     <style>
-        body { font-family: sans-serif; text-align: center; padding: 20px; background: #f4f7f6; }
-        .container { max-width: 500px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        input { padding: 15px; width: 80%; margin-bottom: 20px; border: 1px solid #ddd; border-radius: 5px; }
-        .btn-reg { padding: 15px 40px; font-size: 18px; background: #28a745; color: white; border: none; border-radius: 10px; cursor: pointer; width: 100%; }
-        #statusMsg { margin-bottom: 20px; font-weight: bold; padding: 10px; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
+        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .nav-bar { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; }
+        .nav-btn { padding: 12px 20px; border: none; border-radius: 8px; cursor: pointer; background: #007bff; color: white; font-weight: bold; }
+        .hidden { display: none; }
+        input, select, button { padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #eee; padding: 10px; text-align: center; }
+        th { background-color: #333; color: white; }
     </style>
 </head>
 <body>
-<div class="container">
-    <h2>تسجيل الحضور اليومي</h2>
-    <div id="statusMsg">جاري التحقق من موقعك...</div>
-    <div id="regArea" style="display:none;">
-        <input type="text" id="empCode" placeholder="أدخل كود الموظف الخاص بك">
-        <button class="btn-reg" onclick="registerAttendance()">تسجيل الحضور</button>
+
+<div class="container" style="text-align:center;">
+    <h2>لوحة تحكم المدير - المدرسة الثالثة</h2>
+    <div class="nav-bar">
+        <button class="nav-btn" onclick="showSection('quick')">التسجيل السريع</button>
+        <button class="nav-btn" onclick="showSection('manual')">تسجيل يدوي</button>
+        <button class="nav-btn" onclick="showSection('reports')">التقارير والمتغيبون</button>
+        <button class="nav-btn" onclick="showSection('employees')">إدارة الموظفين</button>
     </div>
+</div>
+
+<div id="quick" class="container"><h3>التسجيل السريع (للموظفين)</h3><table id="quickTable"><thead><tr><th>الاسم</th><th>إجراء</th></tr></thead><tbody id="quickList"></tbody></table></div>
+
+<div id="manual" class="container hidden">
+    <h3>تسجيل يدوي</h3>
+    <input type="text" id="mCode" placeholder="كود الموظف">
+    <select id="mStatus"><option>حاضر</option><option>متأخر</option></select>
+    <button onclick="addManual()">تسجيل حضور</button>
+</div>
+
+<div id="reports" class="container hidden">
+    <h3>التقارير وكشف المتغيبين</h3>
+    <input type="date" id="repDate">
+    <button onclick="generateReport()">عرض التقرير</button>
+    <button onclick="showMissing()" style="background:#dc3545; color:white;">عرض المتغيبين</button>
+    <div id="reportArea"></div>
+</div>
+
+<div id="employees" class="container hidden">
+    <h3>إضافة موظف جديد</h3>
+    <input type="text" id="eCode" placeholder="الكود">
+    <input type="text" id="eName" placeholder="الاسم">
+    <button onclick="addEmp()">حفظ الموظف</button>
+    <table id="empTable"><thead><tr><th>الكود</th><th>الاسم</th></tr></thead><tbody id="empList"></tbody></table>
 </div>
 
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDoc, doc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
 
     const db = getFirestore(initializeApp({
         apiKey: "AIzaSyA_7S6EL-PCRt_ZznsnNtfV089NLc8yRV0",
@@ -33,48 +64,46 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    const SCHOOL_LAT = 31.730757;
-    const SCHOOL_LON = 44.988952;
-
-    // التحقق من الموقع
-    navigator.geolocation.getCurrentPosition(pos => {
-        const R = 6371e3;
-        const dLat = (pos.coords.latitude - SCHOOL_LAT) * Math.PI/180;
-        const dLon = (pos.coords.longitude - SCHOOL_LON) * Math.PI/180;
-        const a = Math.sin(dLat/2)**2 + Math.cos(SCHOOL_LAT*Math.PI/180) * Math.cos(pos.coords.latitude*Math.PI/180) * Math.sin(dLon/2)**2;
-        const dist = R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-
-        if (dist <= 10000) {
-            document.getElementById('statusMsg').innerText = "أهلاً بك، يمكنك تسجيل الحضور الآن.";
-            document.getElementById('statusMsg').style.color = "green";
-            document.getElementById('regArea').style.display = "block";
-        } else {
-            document.getElementById('statusMsg').innerText = "عذراً، أنت خارج النطاق المسموح به (10000 متر).";
-        }
-    }, () => alert("يرجى السماح بالوصول للموقع لتتمكن من تسجيل الحضور."));
-
-    window.registerAttendance = async () => {
-        const code = document.getElementById('empCode').value;
-        if(!code) return alert("يرجى إدخال الكود!");
-
-        const empSnap = await getDoc(doc(db, "employees", code));
-        if (!empSnap.exists()) return alert("الكود غير صحيح!");
-
-        const date = new Date().toISOString().split('T')[0];
-        const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
-        if (!(await getDocs(q)).empty) return alert("تم تسجيل حضورك مسبقاً اليوم!");
-
-        // تسجيل الحضور مع حفظ نوع المتصفح (بصمة الجهاز)
-        await addDoc(collection(db, "attendance"), {
-            empCode: code,
-            name: empSnap.data().name,
-            status: "حاضر",
-            time: new Date().toLocaleTimeString('ar-EG', {hour: '2-digit', minute:'2-digit'}),
-            date: date,
-            device: navigator.userAgent // بصمة الجهاز
-        });
-        alert("تم تسجيل حضورك بنجاح!");
+    // التنقل بين الأقسام
+    window.showSection = (id) => {
+        ['quick', 'manual', 'reports', 'employees'].forEach(s => document.getElementById(s).classList.add('hidden'));
+        document.getElementById(id).classList.remove('hidden');
     };
+
+    // إضافة موظف
+    window.addEmp = async () => {
+        const code = document.getElementById('eCode').value;
+        const name = document.getElementById('eName').value;
+        await setDoc(doc(db, "employees", code), { name });
+        alert("تم إضافة الموظف!");
+    };
+
+    // تسجيل يدوي
+    window.addManual = async () => {
+        const code = document.getElementById('mCode').value;
+        await addDoc(collection(db, "attendance"), { empCode: code, status: document.getElementById('mStatus').value, date: new Date().toISOString().split('T')[0] });
+        alert("تم التسجيل!");
+    };
+
+    // كشف المتغيبين (منطق بسيط للمقارنة)
+    window.showMissing = async () => {
+        const date = new Date().toISOString().split('T')[0];
+        const allEmps = await getDocs(collection(db, "employees"));
+        const atts = await getDocs(query(collection(db, "attendance"), where("date", "==", date)));
+        const attCodes = atts.docs.map(d => d.data().empCode);
+        let list = "<ul>";
+        allEmps.forEach(e => {
+            if(!attCodes.includes(e.id)) list += `<li>${e.data().name}</li>`;
+        });
+        document.getElementById('reportArea').innerHTML = "<h3>المتغيبون اليوم:</h3>" + list + "</ul>";
+    };
+
+    // تحميل الموظفين تلقائياً
+    onSnapshot(collection(db, "employees"), (snap) => {
+        const tbody = document.getElementById('empList');
+        tbody.innerHTML = "";
+        snap.forEach(d => tbody.innerHTML += `<tr><td>${d.id}</td><td>${d.data().name}</td></tr>`);
+    });
 </script>
 </body>
 </html>
