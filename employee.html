@@ -66,7 +66,14 @@
 
         let status = (now > getLimit(empData.type, dayIndex, now)) ? "متأخر" : "حاضر";
 
-        const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
+        // منطق الاستعلام المرن للحارس
+        let q;
+        if (action === 'exit' && empData.type === "حارس") {
+            q = query(collection(db, "attendance"), where("empCode", "==", code), where("exitTime", "==", ""));
+        } else {
+            q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
+        }
+        
         const snap = await getDocs(q);
         
         if (action === 'attendance') {
@@ -74,7 +81,7 @@
             await addDoc(collection(db, "attendance"), { empCode: code, name: empData.name, status, time: now, date, day: new Date().toLocaleDateString('ar-EG', {weekday: 'long'}) });
             alert("تم تسجيل الحضور كـ: " + status);
         } else {
-            if (snap.empty) return alert("سجل الحضور أولاً!");
+            if (snap.empty) return alert("لم يتم العثور على سجل حضور مفتوح!");
             await setDoc(doc(db, 'attendance', snap.docs[0].id), { exitTime: now }, { merge: true });
             alert("تم تسجيل الانصراف!");
         }
