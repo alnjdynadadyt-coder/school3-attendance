@@ -141,7 +141,7 @@
 
         if (action === 'attendance') {
             if (!snap.empty) { alert("الموظف مسجل بالفعل لهذا اليوم!"); return; }
-            let status = (timeInput > getLimit(type, dayIndex)) ? "متأخر" : "حاضر";
+            let status = (timeInput > getLimit(type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
             await addDoc(collection(db, "attendance"), { empCode: code, name, status, time: timeInput, exitTime: "", date, day: now.toLocaleDateString('ar-EG', {weekday: 'long'}), reason: "" });
             alert("تم تسجيل حضور: " + name);
         } else {
@@ -198,8 +198,7 @@
 
         let status = statusRaw;
         if (status === "حاضر") {
-            status = (timeInput > getLimit(empData.type, dayIndex)) ? "متأخر" : "حاضر";
-        }
+            status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
 
         const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
         if (!(await getDocs(q)).empty) { alert("الموظف مسجل بالفعل!"); return; }
