@@ -199,7 +199,7 @@
         let status = statusRaw;
         if (status === "حاضر") {
             status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
-
+        } // <--- تم إضافة هذا القوس المهم جداً هنا
         const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
         if (!(await getDocs(q)).empty) { alert("الموظف مسجل بالفعل!"); return; }
 
