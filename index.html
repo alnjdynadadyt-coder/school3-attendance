@@ -12,14 +12,36 @@
         th, td { border: 1px solid #ddd; padding: 10px; text-align: center; }
         th { background-color: #007bff; color: white; }
         .btn-del { background: #ff4d4d; color: white; border: none; padding: 5px 10px; border-radius: 3px; cursor: pointer; }
+        .btn-quick { background: #28a745; color: white; padding: 5px 10px; border-radius: 3px; margin: 2px; }
+        .btn-exit { background: #6f42c1; color: white; padding: 5px 10px; border-radius: 3px; margin: 2px; }
     </style>
 </head>
 <body>
 
 <div class="container" style="text-align:center;">
-    <h2 style="color:#007bff;">نظام إدارة الحضور</h2>
-    <h3>المدرسة الثالثة</h3>
+    <h2 style="color:#007bff;">نظام إدارة الحضور - المدرسة الثالثة</h2>
 </div>
+
+<div class="container">
+    <h3>لوحة التسجيل السريع</h3>
+    <table id="quickTable"><thead><tr><th>الاسم</th><th>النوع</th><th>إجراءات</th></tr></thead><tbody id="quickAttendanceTable"></tbody></table>
+</div>
+
+<div class="container">
+    <input type="date" id="dateSelector" onchange="renderTable()">
+    <h3>تسجيل يدوي</h3>
+    <div class="input-group">
+        <input type="text" id="empCode" placeholder="كود الموظف">
+        <select id="status"><option>حاضر</option><option>متأخر</option><option>مجاز</option></select>
+        <input type="time" id="customTime">
+        <button onclick="registerAttendance()" style="background:#007bff; color:white;">تسجيل</button>
+    </div>
+    <table id="mainTable">
+        <thead><tr><th>الاسم</th><th>التاريخ</th><th>الحضور</th><th>الانصراف</th><th>الحالة</th><th>إجراء</th></tr></thead>
+        <tbody id="attendanceTable"></tbody>
+    </table>
+</div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getFirestore, doc, getDoc, collection, addDoc, onSnapshot, setDoc, deleteDoc, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore.js";
@@ -33,27 +55,23 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    // الدالة الذكية الجديدة لتحديد الحالة (نظام 24 ساعة)
+    // دالة تحديد الحالة الذكية (نظام 24 ساعة)
     const determineStatus = (type, dayIndex, timeInput) => {
         const [h, m] = timeInput.split(':').map(Number);
-        const timeVal = h * 60 + m; // تحويل الوقت لدقائق من 00:00
+        const timeVal = h * 60 + m; 
 
         // الجمعة (5) والسبت (6)
         if (dayIndex === 5 || dayIndex === 6) {
             if (type === "حارس") {
-                // الحارس: صباحي (قبل 12 ظهراً) حد 07:10، مسائي (بعد 12 ظهراً) حد 17:10
-                if (timeVal < 12 * 60) return (timeVal <= (7 * 60 + 10)) ? "حاضر" : "متأخر";
-                return (timeVal <= (17 * 60 + 10)) ? "حاضر" : "متأخر";
+                return (timeVal < 12 * 60) 
+                    ? ((timeVal <= (7 * 60 + 10)) ? "حاضر" : "متأخر") 
+                    : ((timeVal <= (17 * 60 + 10)) ? "حاضر" : "متأخر");
             }
         }
-
         // الأيام العادية أو الموظفين الآخرين
-        // صباحي (قبل 11 صباحاً) حد 07:10، مسائي (من 11 صباحاً فصاعداً) حد 12:10
-        if (timeVal < 11 * 60) {
-            return (timeVal <= (7 * 60 + 10)) ? "حاضر" : "متأخر";
-        } else {
-            return (timeVal <= (12 * 60 + 10)) ? "حاضر" : "متأخر";
-        }
+        return (timeVal < 11 * 60) 
+            ? ((timeVal <= (7 * 60 + 10)) ? "حاضر" : "متأخر") 
+            : ((timeVal <= (12 * 60 + 10)) ? "حاضر" : "متأخر");
     };
 
     window.quickAction = async (code, name, type, action) => {
@@ -66,35 +84,60 @@
         const snap = await getDocs(q);
 
         if (action === 'attendance') {
-            if (!snap.empty) { alert("الموظف مسجل بالفعل لهذا اليوم!"); return; }
+            if (!snap.empty) { alert("الموظف مسجل بالفعل!"); return; }
             let status = determineStatus(type, dayIndex, timeInput);
-            await addDoc(collection(db, "attendance"), { empCode: code, name, status, time: timeInput, exitTime: "", date, day: now.toLocaleDateString('ar-EG', {weekday: 'long'}), reason: "" });
-            alert("تم تسجيل حضور: " + name + " كـ " + status);
+            await addDoc(collection(db, "attendance"), { empCode: code, name, status, time: timeInput, exitTime: "", date });
+            alert("تم تسجيل الحضور كـ: " + status);
         } else {
-            if (snap.empty) { alert("لم يتم تسجيل الحضور بعد!"); return; }
+            if (snap.empty) { alert("لا يوجد سجل حضور!"); return; }
             await setDoc(doc(db, 'attendance', snap.docs[0].id), { exitTime: timeInput }, { merge: true });
-            alert("تم تسجيل انصراف");
+            alert("تم تسجيل الانصراف");
         }
     };
 
-    // (تأكد من وضع دالة determineStatus داخل registerAttendance أيضاً)
     window.registerAttendance = async () => {
         const code = document.getElementById('empCode').value;
         const date = document.getElementById('dateSelector').value;
         const timeInput = document.getElementById('customTime').value;
+        const statusRaw = document.getElementById('status').value;
         const dayIndex = new Date(date).getDay();
         
         const empSnap = await getDoc(doc(db, "employees", code));
-        if (!empSnap.exists()) { alert("الكود غير موجود"); return; }
+        if (!empSnap.exists()) { alert("كود غير موجود"); return; }
         const empData = empSnap.data();
 
-        let status = determineStatus(empData.type, dayIndex, timeInput);
-        
-        await addDoc(collection(db, "attendance"), { empCode: code, name: empData.name, status, time: timeInput, exitTime: "", date, day: new Date(date).toLocaleDateString('ar-EG', {weekday: 'long'}), reason: "" });
-        alert("تم التسجيل كـ: " + status);
+        let status = (statusRaw === "حاضر") ? determineStatus(empData.type, dayIndex, timeInput) : statusRaw;
+        await addDoc(collection(db, "attendance"), { empCode: code, name: empData.name, status, time: timeInput, date });
+        alert("تم التسجيل");
     };
 
-    // ... (بقية الدوال تبقى كما هي)
+    window.renderTable = () => {
+        const date = document.getElementById('dateSelector').value;
+        onSnapshot(query(collection(db, "attendance"), where("date", "==", date)), snap => {
+            let rows = "";
+            snap.forEach(d => {
+                let data = d.data();
+                rows += `<tr><td>${data.name}</td><td>${data.date}</td><td>${data.time}</td><td>${data.exitTime || ''}</td><td>${data.status}</td>
+                <td><button class="btn-del" onclick="deleteDoc(doc(db, 'attendance', '${d.id}'))">حذف</button></td></tr>`;
+            });
+            document.getElementById('attendanceTable').innerHTML = rows;
+        });
+    };
+
+    onSnapshot(collection(db, "employees"), snap => {
+        let qRows = "";
+        snap.forEach(d => {
+            let data = d.data();
+            qRows += `<tr><td>${data.name}</td><td>${data.type}</td><td>
+            <button class="btn-quick" onclick="quickAction('${d.id}', '${data.name}', '${data.type}', 'attendance')">حضور</button>
+            <button class="btn-exit" onclick="quickAction('${d.id}', '${data.name}', '${data.type}', 'exit')">انصراف</button>
+            </td></tr>`;
+        });
+        document.getElementById('quickAttendanceTable').innerHTML = qRows;
+    });
+
+    document.getElementById('dateSelector').valueAsDate = new Date();
+    document.getElementById('customTime').value = new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false});
     renderTable();
 </script>
 </body>
