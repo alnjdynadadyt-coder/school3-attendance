@@ -109,11 +109,25 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
-    const getLimit = (type, dayIndex) => {
-        if (type === "حارس") return (dayIndex === 5 || dayIndex === 6) ? "07:05" : "17:05";
-        if (type === "موظف") return "07:10";
+        const getLimit = (type, dayIndex, timeInput) => {
+        const [h, m] = timeInput.split(':').map(Number);
+        const timeVal = h * 60 + m;
+
+        // 1. قواعد الحراس (يومي الجمعة والسبت)
+        if (type === "حارس" && (dayIndex === 5 || dayIndex === 6)) {
+            return (timeVal < 12 * 60) ? "07:10" : "17:10";
+        }
+
+        // 2. قواعد الموظفين (الصباحي والمسائي)
+        if (type === "موظف") {
+            return (timeVal < 11 * 60) ? "07:10" : "12:10";
+        }
+
+        // 3. قواعد المدرسين والإداريين (كما كانت سابقاً)
         if (type === "إداري") return "07:40";
-        return "08:10";
+        if (type === "مدرس") return "08:10";
+
+        return "08:10"; // افتراضي
     };
 
     window.quickAction = async (code, name, type, action) => {
