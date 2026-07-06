@@ -50,7 +50,7 @@
     navigator.geolocation.getCurrentPosition(pos => {
         const SCHOOL_LAT = 31.730757, SCHOOL_LON = 44.988952;
         const dist = 6371e3 * 2 * Math.atan2(Math.sqrt(Math.sin(((pos.coords.latitude-SCHOOL_LAT)*Math.PI/180)/2)**2 + Math.cos(SCHOOL_LAT*Math.PI/180)*Math.cos(pos.coords.latitude*Math.PI/180)*Math.sin(((pos.coords.longitude-SCHOOL_LON)*Math.PI/180)/2)**2), Math.sqrt(1 - (Math.sin(((pos.coords.latitude-SCHOOL_LAT)*Math.PI/180)/2)**2 + Math.cos(SCHOOL_LAT*Math.PI/180)*Math.cos(pos.coords.latitude*Math.PI/180)*Math.sin(((pos.coords.longitude-SCHOOL_LON)*Math.PI/180)/2)**2)));
-        if (dist <= 250) { isLocationVerified = true; document.getElementById('statusMsg').innerText = "أهلاً بك، يمكنك التسجيل الآن."; document.getElementById('regArea').style.display = "block"; } 
+        if (dist <= 350) { isLocationVerified = true; document.getElementById('statusMsg').innerText = "أهلاً بك، يمكنك التسجيل الآن."; document.getElementById('regArea').style.display = "block"; } 
         else { document.getElementById('statusMsg').innerText = "عذراً، أنت خارج النطاق (خارج حدود المدرسة)."; }
     }, () => alert("يرجى السماح بالوصول للموقع"), { enableHighAccuracy: true });
 
