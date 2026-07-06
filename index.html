@@ -23,7 +23,7 @@
 
 <div class="container" style="text-align:center;">
     <h2 style="color:#007bff;">نظام إدارة الحضور</h2>
-    <h3>المدرسة </h3>
+    <h3>اعدادية النجدين</h3>
 </div>
 
 <div class="container">
@@ -109,10 +109,11 @@
         appId: "1:645753776685:web:e3d8ddef2b4a523948a6a4"
     }));
 
+    // التعديل 1: توقيت الحارس المحدث (لكل الأيام)
     const getLimit = (type, dayIndex, timeInput) => {
         const [h, m] = timeInput.split(':').map(Number);
         const timeVal = h * 60 + m;
-        if (type === "حارس" && (dayIndex === 5 || dayIndex === 6)) return (timeVal < 12 * 60) ? "07:10" : "17:10";
+        if (type === "حارس") return (timeVal < 12 * 60) ? "07:10" : "17:10";
         if (type === "موظف") return (timeVal < 11 * 60) ? "07:10" : "12:10";
         if (type === "إداري") return "07:40";
         if (type === "مدرس") return "08:10";
@@ -124,7 +125,15 @@
         const now = new Date();
         const timeInput = now.toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit', hour12: false});
         const dayIndex = now.getDay();
-        const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
+        
+        // التعديل 2: استعلام مرن للحارس عند الانصراف
+        let q;
+        if (action === 'exit' && type === "حارس") {
+            q = query(collection(db, "attendance"), where("empCode", "==", code), where("exitTime", "==", ""));
+        } else {
+            q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
+        }
+        
         const snap = await getDocs(q);
         if (action === 'attendance') {
             if (!snap.empty) { alert("الموظف مسجل بالفعل!"); return; }
@@ -185,6 +194,8 @@
         if (status === "حاضر") {
             status = (timeInput > getLimit(empData.type, dayIndex, timeInput)) ? "متأخر" : "حاضر";
         }
+        
+        // تعديل استعلام التسجيل اليدوي ليكون متوافقاً
         const q = query(collection(db, "attendance"), where("empCode", "==", code), where("date", "==", date));
         if (!(await getDocs(q)).empty) { alert("الموظف مسجل بالفعل!"); return; }
         await addDoc(collection(db, "attendance"), { empCode: code, name: empData.name, status, time: (status === "غائب" || status === "مجاز") ? "-" : timeInput, exitTime: "", date, day: new Date(date).toLocaleDateString('ar-EG', {weekday: 'long'}), reason: reason });
